@@ -62,6 +62,10 @@ M2
 SPINDLE_WAIT = 0                  # no waiting after M3 / M4 by default
 RETURN_TO = None                  # no movements after end of program
 LASER = False                     # If true, format gcode for laser control
+LASER_OFF = "M5"                  # Default laser off command.
+LASER_ON = "M3"                   # Default laser on command.
+LASER_NO_S = False                # If true, no "S" word with on command.
+
 # Customisation with no command line argument
 MODAL = False                     # if true commands are suppressed if the same as previous line.
 LINENR = 100                      # line number starting value
@@ -102,6 +106,9 @@ parser.add_argument('--return-to',          default='',          help='Move to t
 parser.add_argument('--bcnc',               action='store_true', help='Add Job operations as bCNC block headers. Consider suppressing existing comments: Add argument --no-comments')
 parser.add_argument('--no-bcnc',            action='store_true', help='suppress bCNC block header output (default)')
 parser.add_argument('--laser',              action='store_true', help='Format gcode for laser.')
+parser.add_argument('--laser-off',                               help='Command used to turn laser off, use ";" for newline, default="M5"')
+parser.add_argument('--laser-on',                                help='Command used to turn laser on, use ";" for newline, default="M3"')
+parser.add_argument('--laser-no-s',         action='store_true', help='Don\'t output spindle speed for laser power')
 TOOLTIP_ARGS = parser.format_help()
 
 
@@ -142,6 +149,9 @@ def processArguments(argstring):
   global RETURN_TO
   global OUTPUT_BCNC
   global LASER
+  global LASER_OFF
+  global LASER_ON
+  global LASER_NO_S
 
   try:
     args = parser.parse_args(shlex.split(argstring))
@@ -190,6 +200,12 @@ def processArguments(argstring):
       OUTPUT_BCNC = False
     if args.laser:
       LASER = True
+    if args.laser_off is not None:
+      LASER_OFF = args.laser_off
+    if args.laser_on is not None:
+      LASER_ON = args.laser_on
+    if args.laser_no_s:
+      LASER_NO_S = True
 
 
   except Exception as e:
@@ -353,6 +369,15 @@ def export(objectslist, filename, argstring):
 def output_laser_gcode(gcode, filename):
 
   global LINENR
+  global LASER_ON
+  global LASER_OFF
+  global LASER_POWER
+
+  LASER_OFF = LASER_OFF.replace(";", "\n")
+  LASER_ON = LASER_ON.replace(";", "\n")
+
+  if LASER_NO_S:
+    LASER_POWER = ""
 
   LINENR = 100     # Reset line number.
   gfile = open(filename, "w")
@@ -383,13 +408,13 @@ def output_laser_gcode(gcode, filename):
         new_gcode_line += parameter + " "
 
     if 'G0' in new_gcode_line:     # Turn laser off for rapid moves.
-      gfile.write(linenumber() + "M5\n")
+      gfile.write(linenumber() + LASER_OFF + "\n")
     elif 'G1' in new_gcode_line and 'G0' in last_line:     # Turn laser on for motion controlled moves.
-      gfile.write(linenumber() +"M3" + " " + LASER_POWER + "\n")
+      gfile.write(linenumber() + LASER_ON + " " + LASER_POWER + "\n")
     elif 'G2' in new_gcode_line and 'G0' in last_line:
-      gfile.write(linenumber() + "M3" + " " + LASER_POWER + "\n")
+      gfile.write(linenumber() + LASER_ON + " " + LASER_POWER + "\n")
     elif 'G3' in new_gcode_line and 'G0' in last_line:
-      gfile.write(linenumber() + "M3" + " " + LASER_POWER + "\n")
+      gfile.write(linenumber() + LASER_ON + " " + LASER_POWER + "\n")
 
     last_line = new_gcode_line
     gfile.write(linenumber() + new_gcode_line)
