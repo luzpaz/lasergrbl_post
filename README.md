@@ -18,4 +18,4 @@ Install of lasergrbl_post.py for using in the FreeCAD Path module:
   
 Copy **lasergrbl_post.py** to your user macro directory, then select the lasergrbl post processor in your Path job.
 
-Be sure to add the --laser command line arguments for laser output.
+Be sure to add --laser to the command line arguments for laser output.
