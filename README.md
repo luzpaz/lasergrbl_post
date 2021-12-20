@@ -12,6 +12,22 @@ If --laser is added to the command line arguments:
 - M5 is added before all rapid moves
 - M3 S##### is added before each group of motion controlled moves.
 
+--laser-on Overrides the defalt "M3" command for laser on.
+
+--laser-no-s Supresses the "S" word after the on command.
+
+--laser-off Overrides the default "M5" command for laser off.
+
+Use ";" for newlines.
+<pre>
+Examples:
+  --laser-on="M4" would produce:  
+       M4 S(spindle speed value from the tool setting in Job)
+       
+  --laser-no-s --laser-on="Turn on;100%" would produce:
+       Turn on
+       100%
+</pre>        
 Install of lasergrbl_post.py for using in the FreeCAD Path module:  
 
 - Personal install :
