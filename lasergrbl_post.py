@@ -61,7 +61,7 @@ M2
 
 SPINDLE_WAIT = 0                  # no waiting after M3 / M4 by default
 RETURN_TO = None                  # no movements after end of program
-
+LASER = False                     # If true, format gcode for laser control
 # Customisation with no command line argument
 MODAL = False                     # if true commands are suppressed if the same as previous line.
 LINENR = 100                      # line number starting value
@@ -93,14 +93,15 @@ parser.add_argument('--no-show-editor',     action='store_true', help='don\'t po
 parser.add_argument('--precision',          default='3',         help='number of digits of precision, default=3')
 parser.add_argument('--translate_drill',    action='store_true', help='translate drill cycles G81, G82 & G83 in G0/G1 movements')
 parser.add_argument('--no-translate_drill', action='store_true', help='don\'t translate drill cycles G81, G82 & G83 in G0/G1 movements (default)')
-parser.add_argument('--preamble',                                help='set commands to be issued before the first command, default="G17 G90"')
-parser.add_argument('--postamble',                               help='set commands to be issued after the last command, default="M5\nG17 G90\n;M2"')
+parser.add_argument('--preamble',                                help='set commands to be issued before the first command, use ";" for newline, "default="G17 G90"')
+parser.add_argument('--postamble',                               help='set commands to be issued after the last command, use ";" for newline, default="M5\nG17 G90\n;M2"')
 parser.add_argument('--inches',             action='store_true', help='Convert output for US imperial mode (G20)')
 parser.add_argument('--tool-change',        action='store_true', help='Insert M6 for all tool changes')
 parser.add_argument('--wait-for-spindle',   type=int, default=0, help='Wait for spindle to reach desired speed after M3 / M4, default=0')
 parser.add_argument('--return-to',          default='',          help='Move to the specified coordinates at the end, e.g. --return-to=0,0')
 parser.add_argument('--bcnc',               action='store_true', help='Add Job operations as bCNC block headers. Consider suppressing existing comments: Add argument --no-comments')
 parser.add_argument('--no-bcnc',            action='store_true', help='suppress bCNC block header output (default)')
+parser.add_argument('--laser',              action='store_true', help='Format gcode for laser, M3=on, S### tool parameter in Path Workbench=power, G5=off.')
 TOOLTIP_ARGS = parser.format_help()
 
 
@@ -115,7 +116,7 @@ COMMAND_SPACE = " "
 CURRENT_X = 0
 CURRENT_Y = 0
 CURRENT_Z = 0
-
+LASER_POWER = "S0" # Do not edit this. Laser power is set with S#### tool parameter in Path Workbench.
 
 # ***************************************************************************
 # * to distinguish python built-in open function from the one declared below
@@ -140,6 +141,7 @@ def processArguments(argstring):
   global SPINDLE_WAIT
   global RETURN_TO
   global OUTPUT_BCNC
+  global LASER
 
   try:
     args = parser.parse_args(shlex.split(argstring))
@@ -186,6 +188,8 @@ def processArguments(argstring):
       OUTPUT_BCNC = True
     if args.no_bcnc:
       OUTPUT_BCNC = False
+    if args.laser:
+      LASER = True
 
 
   except Exception as e:
@@ -210,6 +214,8 @@ def export(objectslist, filename, argstring):
   global UNIT_SPEED_FORMAT
   global MOTION_MODE
   global SUPPRESS_COMMANDS
+  global PREAMBLE
+  global POSTAMBLE
 
   print("Post Processor: " + __name__ + " postprocessing...")
   gcode = ""
@@ -230,6 +236,7 @@ def export(objectslist, filename, argstring):
   # Write the preamble
   if OUTPUT_COMMENTS:
     gcode += linenumber() + "(Begin preamble)\n"
+  PREAMBLE = PREAMBLE.replace(";", "\n")
   for line in PREAMBLE.splitlines(True):
     gcode += linenumber() + line
   # verify if PREAMBLE have changed MOTION_MODE or UNITS
@@ -312,6 +319,7 @@ def export(objectslist, filename, argstring):
     gcode += linenumber() + "(Block-enable: 1)\n"
   if OUTPUT_COMMENTS:
     gcode += linenumber() + "(Begin postamble)\n"
+  POSTAMBLE = POSTAMBLE.replace(";", "\n")
   for line in POSTAMBLE.splitlines(True):
     gcode += linenumber() + line
 
@@ -330,13 +338,64 @@ def export(objectslist, filename, argstring):
   else:
     final = gcode
 
-  print("Done postprocessing.")
+  if LASER:
+    output_laser_gcode(gcode, filename) # Reprocess the gcode for a laser
 
-  # write the file
-  gfile = pythonopen(filename, "w")
-  gfile.write(final)
+  else:
+
+    print("Done postprocessing.")
+
+    # write the file
+    gfile = pythonopen(filename, "w")
+    gfile.write(final)
+    gfile.close()
+
+def output_laser_gcode(gcode, filename):
+
+  global LINENR
+
+  LINENR = 100     # Reset line number.
+  gfile = open(filename, "w")
+
+  last_line = ""
+
+  for line in gcode.splitlines(True):
+
+    if 'M3' in line:     # Remove unwanted M3 command.
+      continue
+    if 'Z' in line and 'G0' in line:    # Remove G0 commands with Z moves.
+      continue
+
+    gcode_line = line.split(" ")
+    parameter = ""
+    new_gcode_line = ""
+
+    for parameter in gcode_line:     # Remove unwanted parameters.
+      if 'N' in parameter:
+        pass
+      elif 'Z' in parameter:
+        pass
+      elif 'K' in parameter:
+        pass
+      elif '\n' in parameter:
+        new_gcode_line += parameter     # Don't add a space after the end of the line.
+      else:
+        new_gcode_line += parameter + " "
+
+    if 'G0' in new_gcode_line:     # Turn laser off for rapid moves.
+      gfile.write(linenumber() + "M5\n")
+    elif 'G1' in new_gcode_line and 'G0' in last_line:     # Turn laser on for motion controlled moves.
+      gfile.write(linenumber() +"M3" + " " + LASER_POWER + "\n")
+    elif 'G2' in new_gcode_line and 'G0' in last_line:
+      gfile.write(linenumber() + "M3" + " " + LASER_POWER + "\n")
+    elif 'G3' in new_gcode_line and 'G0' in last_line:
+      gfile.write(linenumber() + "M3" + " " + LASER_POWER + "\n")
+
+    last_line = new_gcode_line
+    gfile.write(linenumber() + new_gcode_line)
   gfile.close()
 
+  print("Done postprocessing.")
 
 def linenumber():
   if not OUTPUT_LINE_NUMBERS:
@@ -365,6 +424,7 @@ def parse(pathobj):
   global CURRENT_X
   global CURRENT_Y
   global CURRENT_Z
+  global LASER_POWER
 
   out = ""
   lastcommand = None
@@ -406,7 +466,10 @@ def parse(pathobj):
               if speed.getValueAs(UNIT_SPEED_FORMAT) > 0.0:
                 outstring.append(param + format(float(speed.getValueAs(UNIT_SPEED_FORMAT)), precision_string))
           elif param in ['T', 'H', 'D', 'S', 'P', 'L']:
-            outstring.append(param + str(c.Parameters[param]))
+            if param == 'S' and LASER:
+              LASER_POWER = param + str(c.Parameters[param])      # Store spindle speed(laser power).
+            else:
+              outstring.append(param + str(c.Parameters[param]))
           elif param in ['A', 'B', 'C']:
             outstring.append(param + format(c.Parameters[param], precision_string))
           else:  # [X, Y, Z, U, V, W, I, J, K, R, Q] (Conversion eventuelle mm/inches)
