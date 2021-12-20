@@ -101,7 +101,7 @@ parser.add_argument('--wait-for-spindle',   type=int, default=0, help='Wait for 
 parser.add_argument('--return-to',          default='',          help='Move to the specified coordinates at the end, e.g. --return-to=0,0')
 parser.add_argument('--bcnc',               action='store_true', help='Add Job operations as bCNC block headers. Consider suppressing existing comments: Add argument --no-comments')
 parser.add_argument('--no-bcnc',            action='store_true', help='suppress bCNC block header output (default)')
-parser.add_argument('--laser',              action='store_true', help='Format gcode for laser, M3=on, S### tool parameter in Path Workbench=power, G5=off.')
+parser.add_argument('--laser',              action='store_true', help='Format gcode for laser.')
 TOOLTIP_ARGS = parser.format_help()
 
 
