@@ -21,8 +21,11 @@ If --laser is added to the command line arguments:
 Use ";" for newlines.
 <pre>
 Examples:
-  --laser-on="M4" would produce:  
-       M4 S(spindle speed value from the tool setting in Job)
+  My laser max power setting is 1000 so if spindle speed is set
+  at 900 that gives me 90%.
+  
+  --laser-on="M4" would produce:
+       M4 S900
        
   --laser-no-s --laser-on="Turn on;100%" would produce:
        Turn on
