@@ -32,3 +32,6 @@ My laser max power setting is 1000 so if spindle speed is set at 900 that gives 
 * Copy **lasergrbl_post.py** to your macro directory
 * Select the lasergrbl post processor in your [Path job](https://wiki.freecad.org/Path_Job).
 * Be sure to add `--laser` to the command line arguments for laser output.
+
+## License
+LGPL v2.1 [License](LICENSE)
