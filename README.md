@@ -14,7 +14,7 @@ If --laser is added to the command line arguments:
 
 --laser-on Overrides the defalt "M3" command for laser on.
 
---laser-no-s Supresses the "S" word after the on command.
+--laser-no-s Suppresses the "S" word after the on command.
 
 --laser-off Overrides the default "M5" command for laser off.
 
