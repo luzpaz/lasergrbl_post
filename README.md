@@ -30,11 +30,10 @@ Examples:
   --laser-no-s --laser-on="Turn on;100%" would produce:
        Turn on
        100%
-</pre>        
-Install of lasergrbl_post.py for using in the FreeCAD Path module:  
+</pre>  
 
-- Personal install :
+**Installation :**
   
-Copy **lasergrbl_post.py** to your user macro directory, then select the lasergrbl post processor in your Path job.
+Copy **lasergrbl_post.py** to your macro directory, then select the lasergrbl post processor in your Path job.
 
 Be sure to add --laser to the command line arguments for laser output.
